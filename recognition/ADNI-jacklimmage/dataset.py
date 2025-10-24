@@ -1,7 +1,7 @@
 import torch
 from torchvision import datasets
 
-DATA_DIR = "/home/groups/comp3710/ADNI/"
+DATA_DIR = "/home/groups/comp3710/ADNI"
 
 def load_data(batch_size=32):
     print("Loading data...")
