@@ -4,7 +4,7 @@ from torchvision import datasets, transforms
 DATA_DIR = "/home/groups/comp3710/ADNI/AD_NC"
 
 def load_data(batch_size=32, num_workers=4):
-    print("Loading data...")
+    print("\nLoading data...")
 
     # transform to convert images to tensors
     transform = transforms.Compose([
