@@ -4,16 +4,21 @@ from dataset import load_data
 from modules import *
 import time, datetime
 
-BATCH_SIZE = 2048
+BATCH_SIZE = 512
 NUM_WORKERS = 4
 
-NUM_EPOCHS = 5
-LEARNING_RATE = 1e-3
+NUM_EPOCHS = 15
+LEARNING_RATE = 5e-5
 SAVE_PATH = "best_model.pth"
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main():
+    # --- Set Seeds ---
+    torch.manual_seed(42)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(42)
+
     # --- Data Loading ---
     train_loader, test_loader = load_data(BATCH_SIZE, NUM_WORKERS)
     print(f"\nData loaders ready. Train samples: {len(train_loader.dataset)}, "
@@ -22,15 +27,17 @@ def main():
     # --- Model Initialization ---
     model = GFNet(
         img_size=224, 
-        patch_size=16, embed_dim=192, depth=6, mlp_ratio=4,
+        patch_size=16, embed_dim=394, depth=12, mlp_ratio=4,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        num_classes=2
+        num_classes=2, drop_path_rate=0.3
     ).to(DEVICE)
     print(f"Model initialized on {DEVICE}.")
 
-    # --- Loss Function, Optimizer ---
+    # --- Loss Function, Optimizer & Scheduler ---
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-6)
+    optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=0.1)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=NUM_EPOCHS)
+
 
     # --- Training ---
     train_losses = []
@@ -55,6 +62,8 @@ def main():
         print(f"\nEpoch {epoch+1}/{NUM_EPOCHS}:")
         print(f"  Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:.2f}%")
         print(f"  Val Loss:   {val_loss:.4f} | Val Acc:   {val_acc_pct:.2f}%")
+
+        scheduler.step()
 
         # --- Save Best Model ---
         if val_acc_pct > max_accuracy:

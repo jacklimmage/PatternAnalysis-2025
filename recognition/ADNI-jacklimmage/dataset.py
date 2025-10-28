@@ -7,14 +7,24 @@ def load_data(batch_size=32, num_workers=4):
     print("\nLoading data...")
 
     # transform to convert images to tensors
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+    train_transform = transforms.Compose([
+        transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
         transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet stats
+    ])
+
+    test_transform = transforms.Compose([
+        # transforms.Resize(224),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # ImageNet stats
     ])
 
     # load images from directory
-    train_dataset = datasets.ImageFolder(f"{DATA_DIR}/train", transform=transform)
-    test_dataset  = datasets.ImageFolder(f"{DATA_DIR}/test", transform=transform)
+    train_dataset = datasets.ImageFolder(f"{DATA_DIR}/train", transform=train_transform)
+    test_dataset  = datasets.ImageFolder(f"{DATA_DIR}/test", transform=test_transform)
 
     # create data loaders
     train_loader = torch.utils.data.DataLoader(
