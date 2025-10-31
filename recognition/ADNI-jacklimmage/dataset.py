@@ -1,12 +1,29 @@
+"""Dataset utilities for ADNI image loading and preprocessing.
+
+This module exposes `load_data` which returns train/test PyTorch DataLoaders
+expecting the dataset laid out as ImageFolder directories.
+"""
+
 import torch
 from torchvision import datasets, transforms
 
+# Default dataset root. Adjust this to point to your local ADNI image folders.
 DATA_DIR = "/home/groups/comp3710/ADNI/AD_NC"
 
 def load_data(batch_size=32, num_workers=4):
+    """Create train and test DataLoaders.
+
+    Args:
+        batch_size (int): batch size for loaders
+        num_workers (int): loader worker count
+
+    Returns:
+        (train_loader, test_loader)
+    """
+
     print("\nLoading data...")
 
-    # transform to convert images to tensors
+    # Training transforms: augmentation + normalization
     train_transform = transforms.Compose([
         transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),
         transforms.RandomHorizontalFlip(),
@@ -23,10 +40,12 @@ def load_data(batch_size=32, num_workers=4):
     ])
 
     # load images from directory
+    # ImageFolder expects subfolders per class (e.g., DATA_DIR/train/AD, DATA_DIR/train/NC)
     train_dataset = datasets.ImageFolder(f"{DATA_DIR}/train", transform=train_transform)
     test_dataset  = datasets.ImageFolder(f"{DATA_DIR}/test", transform=test_transform)
 
     # create data loaders
+    # Shuffle training data; keep test deterministic
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True)
     test_loader  = torch.utils.data.DataLoader(

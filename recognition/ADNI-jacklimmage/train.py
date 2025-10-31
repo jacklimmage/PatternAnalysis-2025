@@ -1,3 +1,9 @@
+"""Training script for GFNet on the ADNI dataset.
+
+This script defines hyperparameters and runs the training loop. It saves the
+best model checkpoint (by validation accuracy) to `best_model.pth`.
+"""
+
 import torch
 from torch import nn, optim
 from dataset import load_data
@@ -8,8 +14,8 @@ BATCH_SIZE = 256
 NUM_WORKERS = 4
 
 NUM_EPOCHS = 100
-LEARNING_RATE = 1e-3
-WEIGHT_DECAY = 0.2
+LEARNING_RATE = 7e-4
+WEIGHT_DECAY = 0.12
 
 SAVE_PATH = "best_model.pth"
 PRETRAINED_PATH = "gfnet-xs-pretrained.pth"
@@ -17,7 +23,7 @@ PRETRAINED_PATH = "gfnet-xs-pretrained.pth"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main():
-    # --- Set Seeds ---
+    # --- Set Seeds (for reproducibility) ---
     torch.manual_seed(42)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(42)
@@ -27,7 +33,7 @@ def main():
     print(f"\nData loaders ready. Train samples: {len(train_loader.dataset)}, "
           f"Test samples: {len(test_loader.dataset)}")
 
-    # --- Model Initialization ---
+    # --- Model Initialization (GFNet) ---
     model = GFNet(
         img_size=224, 
         patch_size=16, embed_dim=394, depth=12, mlp_ratio=4,
@@ -36,7 +42,7 @@ def main():
     ).to(DEVICE)
     print(f"Model initialized on {DEVICE}.")
 
-    # --- Load Pretrained Weights ---
+    # --- Load Pretrained Weights (partial match of keys) ---
     checkpoint = torch.load(PRETRAINED_PATH, map_location=DEVICE)
     model_state_dict = model.state_dict()
     pretrained_state_dict = {k: v for k, v in checkpoint.items() if k in model_state_dict and v.shape == model_state_dict[k].shape}
@@ -50,7 +56,7 @@ def main():
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=NUM_EPOCHS)
 
 
-    # --- Training ---
+    # --- Training loop ---
     train_losses = []
     val_losses = []
     val_accuracies = []
@@ -76,7 +82,7 @@ def main():
 
         scheduler.step()
 
-        # --- Save Best Model ---
+    # --- Save Best Model (based on validation accuracy percentage) ---
         if val_acc_pct > max_accuracy:
             max_accuracy = val_acc_pct
             torch.save(model.state_dict(), SAVE_PATH)

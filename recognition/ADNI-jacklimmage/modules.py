@@ -1,3 +1,10 @@
+"""GFNet model components and training/validation helpers.
+
+This file implements the GFNet building blocks used by the training script
+including MLP, GlobalFilter, Patch embedding and the overall GFNet model.
+It also provides `train_epoch` and `validate_epoch` helpers used by `train.py`.
+"""
+
 import math
 from functools import partial
 from collections import OrderedDict
@@ -8,6 +15,10 @@ from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 import torch.fft
 
 class Mlp(nn.Module):
+    """Simple 2-layer MLP with activation and dropout.
+
+    Used inside GFNet blocks for channel mixing.
+    """
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
         super().__init__()
         out_features = out_features or in_features
@@ -26,6 +37,11 @@ class Mlp(nn.Module):
         return x
 
 class GlobalFilter(nn.Module):
+    """Frequency-domain global filter layer.
+
+    Applies an FFT-based complex-valued filter to patches to capture
+    global spatial interactions.
+    """
     def __init__(self, dim, h=14, w=8):
         super().__init__()
         self.complex_weight = nn.Parameter(torch.randn(h, w, dim, 2, dtype=torch.float32) * 0.02)
@@ -53,6 +69,7 @@ class GlobalFilter(nn.Module):
         return x
 
 class Block(nn.Module):
+    """Single GFNet block: normalization -> global filter -> MLP with skip connection."""
 
     def __init__(self, dim, mlp_ratio=4., drop=0., drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, h=14, w=8):
         super().__init__()
@@ -68,7 +85,9 @@ class Block(nn.Module):
         return x
 
 class PatchEmbed(nn.Module):
-    """ Image to Patch Embedding
+    """Image to patch embedding via a conv layer.
+
+    Converts HxW images into a sequence of patch embeddings.
     """
     def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
         super().__init__()
@@ -90,6 +109,10 @@ class PatchEmbed(nn.Module):
         return x
 
 class GFNet(nn.Module):
+    """Main GFNet model.
+
+    Forward produces class logits for input images.
+    """
     
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  mlp_ratio=4., representation_size=None, uniform_drop=False,
@@ -202,7 +225,10 @@ class GFNet(nn.Module):
         return x
 
 def train_epoch(model, loader, criterion, optimizer, device):
-    """Runs a single training epoch."""
+    """Runs a single training epoch.
+
+    Returns average loss and accuracy for the epoch.
+    """
     model.train()
     running_loss = 0.0
     correct = 0  # images correctly classified
@@ -228,7 +254,7 @@ def train_epoch(model, loader, criterion, optimizer, device):
     return avg_loss, avg_acc
 
 def validate_epoch(model, loader, criterion, device):
-    """Runs validation on the test/validation set."""
+    """Runs validation on the test/validation set and returns loss and accuracy."""
     model.eval()
     running_loss = 0.0
     correct = 0  # images correctly classified
